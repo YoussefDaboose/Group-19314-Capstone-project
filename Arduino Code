@@ -1,6 +1,17 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
- 
+ #include "WiFi.h"
+#include "ThingSpeak.h"
+
+#define WIFI_NETWORK "Daboose"
+#define WIFI_PASSWORD "d7k pure"
+#define WIFI_TIMEOUT_MS 20000
+
+#define CHANNEL_ID 1961472
+#define CHANNEL_API_KEY "XVXRS83ZTMXPWZOR"
+
+  WiFiClient client;
+
 const int oneWireBus = 25; // GPIO where the DS18B20 is connected to
  
 #define TdsSensorPin 35
@@ -13,6 +24,28 @@ int copyIndex = 0;
 float averageVoltage = 0;
 float tdsValue = 0;
 float temperature = 0;
+
+  //WI-FI Connection Code Start
+  void connectToWifi(){
+    Serial.print("connecting to WIFI...");
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_NETWORK, WIFI_PASSWORD);
+
+    unsigned long startAttemptTime = millis();
+
+    while(WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < WIFI_TIMEOUT_MS){
+        Serial.println("Trying to connect to WiFi...");
+        delay(100);
+    }
+
+    if(WiFi.status() != WL_CONNECTED){
+            Serial.println("Failed to connect to this Wi-Fi Network.");
+        }else{
+            Serial.print("Connected! IP: ");
+            Serial.println(WiFi.localIP());
+        }
+    }
+  //WI-FI Connection Code End
  
  
 OneWire oneWire(oneWireBus);    // Setup a oneWire instance to communicate with any OneWire devices
@@ -24,6 +57,11 @@ void setup()
   Serial.begin(115200);
   pinMode(TdsSensorPin, INPUT);
   sensors.begin();
+  {
+  Serial.begin(9600);
+  connectToWifi();
+  ThingSpeak.begin(client);
+}
 }
  
 void loop()
@@ -83,4 +121,8 @@ int getMedianNum(int bArray[], int iFilterLen)
   else
     bTemp = (bTab[iFilterLen / 2] + bTab[iFilterLen / 2 - 1]) / 2;
   return bTemp;
+  ThingSpeak.setField(1, temp);
+  ThingSpeak.setField(2, TDS);
+  ThingSpeak.writeFields(CHANNEL_ID, CHANNEL_API_KEY);
+  
 }
